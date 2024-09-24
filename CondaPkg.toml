@@ -1,0 +1,3 @@
+[deps]
+pyarrow = ""
+geoarrow-pyarrow = ""
