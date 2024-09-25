@@ -9,7 +9,7 @@ using PythonCall
 # ga = pyimport("geoarrow.pyarrow")
 feather = pyimport("pyarrow.feather")
 
-mkpath(joinpath(@__DIR__, "data/write"), exist_ok=true)
+mkpath(joinpath(@__DIR__, "data/write"))
 
 @testset "GeoArrow.jl" begin
     @testset "Test datasets" begin
