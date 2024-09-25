@@ -13,6 +13,7 @@ WellKnownGeometry = "0f680547-7be7-4555-8820-bb198eeb646b"
 
 [compat]
 Arrow = "2.4"
+Extents = "0.1"
 GeoFormatTypes = "0.4"
 GeoInterface = "1.2"
 JSON3 = "1.14"
