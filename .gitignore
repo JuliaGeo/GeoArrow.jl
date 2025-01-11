@@ -6,3 +6,7 @@
 test/.cpenv
 .CondaPkg
 *.arrow
+
+# pixi environments
+.pixi
+*.egg-info
