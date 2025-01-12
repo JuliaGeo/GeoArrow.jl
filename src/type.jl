@@ -45,12 +45,12 @@ Base.show(io::IO, ::Wrapper{E,T,G}) where {E,T,G} = print(io, "$T geometry encod
 Wrapper(e::AbstractEncoding, x) = Wrapper{typeof(e),typeof(GeoInterface.geomtrait(x)),GeoInterface.ncoord(x),typeof(x)}(x)
 Wrapper(x) = Wrapper(Interleaved(), x)
 
-data(x::Wrapper{E,T,N,G}) where {E,T,N,G} = _coordinates(E(), T(), N, x.geom)
+data(x::Wrapper{E,T,N,G}) where {E,T,N,G} = _coordinates(E(), T(), Val{N}(), x.geom)
 data(x::Wrapper{WellKnownBinary,T,G}) where {T,G} = getwkb(x.geom).val
 data(x::Wrapper{WellKnownText,T,G}) where {T,G} = getwkt(x.geom).val
 
-_coordinates(::Interleaved, t::AbstractPointTrait, N, geom) = NTuple{N,Float64}(getcoord(t, geom))
-_coordinates(::Seperated, t::AbstractPointTrait, N, geom) = nt(NTuple{N,Float64}(getcoord(t, geom)))
+_coordinates(::Interleaved, t::AbstractPointTrait, ::Val{N}, geom) where N = NTuple{N,Float64}(getcoord(t, geom))
+_coordinates(::Seperated, t::AbstractPointTrait, ::Val{N}, geom) where N = nt(NTuple{N,Float64}(getcoord(t, geom)))
 function _coordinates(E::AbstractNativeEncoding, t::AbstractGeometryTrait, N, geom)
     map(x -> _coordinates(E, GeoInterface.geomtrait(x), N, x), getgeom(t, geom))
 end
