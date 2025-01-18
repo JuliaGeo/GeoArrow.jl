@@ -7,11 +7,6 @@ using GeoFormatTypes
 using DataFrames
 using Extents
 
-# ENV["JULIA_CONDAPKG_OFFLINE"] = true  # for running locally
-ENV["JULIA_CONDAPKG_ENV"] = joinpath(@__DIR__, ".cpenv")
-using PythonCall
-feather = pyimport("pyarrow.feather")
-
 mkpath(joinpath(@__DIR__, "data/write"))
 
 @testset "GeoArrow.jl" begin
@@ -49,6 +44,19 @@ mkpath(joinpath(@__DIR__, "data/write"))
         end
     end
     @testset "Python" begin
+        Sys.iswindows() && return  # doesn't work on Windows
+
+        # ENV["JULIA_CONDAPKG_OFFLINE"] = true  # for running locally
+        ENV["JULIA_CONDAPKG_ENV"] = joinpath(@__DIR__, ".cpenv")
+        try
+            using PythonCall
+        catch e
+            @error "PythonCall not available:"
+            @error e
+            return
+        end
+        feather = pyimport("pyarrow.feather")
+
         for arrowfn in filter(endswith("arrow"), readdir("data", join=true))
             @testset "$arrowfn" begin
                 t = GeoArrow.read(arrowfn)
