@@ -3,10 +3,13 @@ using Arrow
 using GeoInterface
 using Downloads
 using Test
-# ENV["JULIA_CONDAPKG_OFFLINE"] = true
+using GeoFormatTypes
+using DataFrames
+using Extents
+
+# ENV["JULIA_CONDAPKG_OFFLINE"] = true  # for running locally
 ENV["JULIA_CONDAPKG_ENV"] = joinpath(@__DIR__, ".cpenv")
 using PythonCall
-# ga = pyimport("geoarrow.pyarrow")
 feather = pyimport("pyarrow.feather")
 
 mkpath(joinpath(@__DIR__, "data/write"))
@@ -38,21 +41,66 @@ mkpath(joinpath(@__DIR__, "data/write"))
                 GeoArrow.write(io, t; compress=:zstd)
                 seekstart(io)
                 nt = GeoArrow.read(io, convert=true)
-                ngeom = t.geometry[1]
-                @test GeoInterface.isgeometry(geom)
+                ngeom = nt.geometry[1]
+                @test GeoInterface.testgeometry(ngeom)
 
-                @test ngeom == geom
+                @test GeoInterface.coordinates(ngeom) == GeoInterface.coordinates(geom)
             end
         end
     end
     @testset "Python" begin
         for arrowfn in filter(endswith("arrow"), readdir("data", join=true))
             @testset "$arrowfn" begin
-                t = Arrow.Table(arrowfn)
+                t = GeoArrow.read(arrowfn)
+                geom = t.geometry[1]
+
                 fn = joinpath("data/write", basename(arrowfn))
                 GeoArrow.write(fn, t)
-                pt = feather.read_table(fn)
+
+                # Read with Python
+                # gdf = geopandas.read_feather(fn)
+                # print(gdf.geometry.type)
+                t = feather.read_table(fn)
+                meta = t.schema.field(-1).metadata
+                @test length(meta.keys()) == 2
+                @test any(occursin.("geoarrow", string.(meta.values())))
+
+                # Read with Julia
+                tt = GeoArrow.read(fn)
+                tt.geometry[1] == geom
             end
         end
+    end
+    @testset "Encodings" begin
+        g = GeoFormatTypes.WellKnownText(GeoFormatTypes.Geom(), "POINT (1 2)")
+
+        w = GeoArrow.Wrapper(GeoArrow.WellKnownText(), g)
+        @test ArrowTypes.ArrowKind(typeof(w)) == ArrowTypes.ListKind()
+        @test ArrowTypes.ArrowType(typeof(w)) == String
+        @test ArrowTypes.arrowname(typeof(w)) == Symbol("geoarrow.wkt")
+        @test ArrowTypes.toarrow(w) == "POINT (1.0 2.0)"
+
+        w = GeoArrow.Wrapper(GeoArrow.WellKnownBinary(), g)
+        @test ArrowTypes.ArrowKind(typeof(w)) == ArrowTypes.ListKind()
+        @test ArrowTypes.ArrowType(typeof(w)) == Vector{UInt8}
+        @test ArrowTypes.toarrow(w)[1:10] == UInt8[0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+        w = GeoArrow.Wrapper(g)  # Encoding defaults to Interleaved
+        @test ArrowTypes.ArrowKind(typeof(w)) == ArrowTypes.FixedSizeListKind{2,Float64}()
+        @test ArrowTypes.ArrowType(typeof(w)) == NTuple{2,Float64}
+        @test ArrowTypes.arrowname(typeof(w)) == Symbol("geoarrow.point")
+        @test ArrowTypes.toarrow(w) == (1.0, 2.0)
+
+        w = GeoArrow.Wrapper(GeoArrow.Seperated(), g)
+        @test ArrowTypes.ArrowKind(typeof(w)) == ArrowTypes.StructKind()
+        @test ArrowTypes.ArrowType(typeof(w)) == @NamedTuple{x::Float64, y::Float64}
+        @test ArrowTypes.arrowname(typeof(w)) == Symbol("geoarrow.point")
+        @test ArrowTypes.toarrow(w) == (; x=1.0, y=2.0)
+    end
+    @testset "Simple" begin
+        df = DataFrame(a=1, geometry=[(1.,2.)])        
+        GeoArrow.write("simple.arrow", df)
+        dfn = GeoArrow.read("simple.arrow")
+        @test GeoInterface.isgeometry(dfn.geometry[1])
     end
 end
