@@ -44,6 +44,7 @@ mkpath(joinpath(@__DIR__, "data/write"))
         end
     end
     @testset "Python" begin
+        Sys.iswindows() && return  # doesn't work on Windows
 
         # ENV["JULIA_CONDAPKG_OFFLINE"] = true  # for running locally
         ENV["JULIA_CONDAPKG_ENV"] = joinpath(@__DIR__, ".cpenv")
