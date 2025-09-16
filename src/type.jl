@@ -22,6 +22,11 @@ GeoInterface.ngeom(t, g::Geometry{X,D,T,<:GeoFormatTypes.MixedFormat}) where {X,
 GeoInterface.getgeom(_, g::Geometry, i) = Base.getindex(g, i)
 GeoInterface.getgeom(t, g::Geometry{X,D,T,<:GeoFormatTypes.MixedFormat}, i) where {X,D,T} = getgeom(t, g.geom, i)
 
+# coordtype implementation
+if :coordtype in names(GeoInterface; all = true)
+    GeoInterface.coordtype(::GeoInterface.AbstractGeometryTrait, geom::Geometry{X,D,T}) where {X,D,T} = T
+end
+
 childtrait(::LineStringTrait) = PointTrait
 childtrait(::LinearRingTrait) = PointTrait
 childtrait(::PolygonTrait) = LinearRingTrait
