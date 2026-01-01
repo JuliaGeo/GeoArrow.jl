@@ -21,6 +21,7 @@ GeoInterface.ngeom(_, g::Geometry) = length(g.geom)
 GeoInterface.ngeom(t, g::Geometry{X,D,T,<:GeoFormatTypes.MixedFormat}) where {X,D,T} = ngeom(t, g.geom)
 GeoInterface.getgeom(_, g::Geometry, i) = Base.getindex(g, i)
 GeoInterface.getgeom(t, g::Geometry{X,D,T,<:GeoFormatTypes.MixedFormat}, i) where {X,D,T} = getgeom(t, g.geom, i)
+GeoInterface.isempty(::GeoInterface.AbstractGeometryTrait, g::Geometry) = length(g.geom) == 0
 
 # coordtype implementation
 if :coordtype in names(GeoInterface; all = true)

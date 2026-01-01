@@ -86,7 +86,7 @@ ArrowTypes.fromarrow(::Type{GeoFormatTypes.WellKnownBinary}, x) = GeoFormatTypes
 ArrowTypes.fromarrow(::Type{GeoFormatTypes.WellKnownText}, x) = GeoFormatTypes.WellKnownText(GeoFormatTypes.Geom(), String(x))  # should be StringView
 function ArrowTypes.fromarrow(::Type{Geometry{X}}, x) where {X}
     nt = nested_eltype(x)
-    D = length(nonmissingtype(nt).types)
+    D = length(nt.types)
     return Geometry{X,D,Float64}(x)
 end
 function fromarrow(::Type{GeoArrow.Geometry{X}}, nt::NamedTuple) where X
@@ -95,6 +95,7 @@ end
 ArrowTypes.fromarrow(::Type{Extents.Extent}, x) = Extents.Extent(X=(x.xmin, x.xmax), Y=(x.ymin, x.ymax))
 
 nested_eltype(x) = nested_eltype(typeof(x))
+nested_eltype(::Type{Union{Missing,T}}) where {T} = nested_eltype(T)
 nested_eltype(::Type{T}) where {T<:AbstractArray} = nested_eltype(eltype(T))
 nested_eltype(::Type{T}) where {T} = T
 
