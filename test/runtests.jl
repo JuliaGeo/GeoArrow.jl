@@ -6,6 +6,7 @@ using Test
 using GeoFormatTypes
 using DataFrames
 using Extents
+using DataAPI
 
 mkpath(joinpath(@__DIR__, "data/write"))
 
@@ -106,9 +107,15 @@ mkpath(joinpath(@__DIR__, "data/write"))
         @test ArrowTypes.toarrow(w) == (; x=1.0, y=2.0)
     end
     @testset "Simple" begin
+    @testset "Metadata" begin
         df = DataFrame(a=1, geometry=[(1.,2.)])        
-        GeoArrow.write("simple.arrow", df)
-        dfn = GeoArrow.read("simple.arrow")
-        @test GeoInterface.isgeometry(dfn.geometry[1])
+        DataAPI.metadata!(df, "author", "test")
+        DataAPI.colmetadata!(df, :a, "description", "A normal column")
+        DataAPI.colmetadata!(df, :geometry, "description", "A point geometry")
+        GeoArrow.write("metadata.arrow", df)
+        dfn = GeoArrow.read("metadata.arrow")
+        @test DataAPI.metadata(dfn)["author"] == "test"
+        @test DataAPI.colmetadata(dfn)[:a]["description"] == "A normal column"
+        @test DataAPI.colmetadata(dfn)[:geometry]["description"] == "A point geometry"
     end
 end
