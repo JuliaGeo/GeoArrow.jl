@@ -107,6 +107,11 @@ mkpath(joinpath(@__DIR__, "data/write"))
         @test ArrowTypes.toarrow(w) == (; x=1.0, y=2.0)
     end
     @testset "Simple" begin
+        df = DataFrame(a=1, geometry=[(1.,2.)])        
+        GeoArrow.write("simple.arrow", df)
+        dfn = GeoArrow.read("simple.arrow")
+        @test GeoInterface.isgeometry(dfn.geometry[1])
+    end
     @testset "Metadata" begin
         df = DataFrame(a=1, geometry=[(1.,2.)])        
         DataAPI.metadata!(df, "author", "test")
