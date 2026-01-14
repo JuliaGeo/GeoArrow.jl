@@ -6,6 +6,7 @@ Base.:(==)(x::Geometry{X,D,T,G}, y::Geometry{X,D,T,G}) where {X,D,T,G} = x.geom 
 Base.show(io::IO, x::Geometry{X,D,T}) where {X,D,T} = print(io, "$X geometry in $(D)D with eltype $T")
 Geometry{X,D,T}(x) where {X,D,T} = Geometry{X,D,T,typeof(x)}(x)
 Geometry{PointTrait}(x::Vararg{T,D}) where {T,D} = Geometry{PointTrait,D,T}(reinterpret(NTuple{D,T}, x))
+Geometry{PointTrait,D,T}(x, y, z, m) where {T,D} = Geometry{PointTrait,D,T}((x, y, z, m))
 Geometry{PointTrait,D,T}(x, y, z) where {T,D} = Geometry{PointTrait,D,T}((x, y, z))
 Geometry{PointTrait,D,T}(x, y) where {T,D} = Geometry{PointTrait,D,T}((x, y))
 

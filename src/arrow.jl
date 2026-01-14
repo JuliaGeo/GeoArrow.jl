@@ -10,20 +10,34 @@ WKB = Symbol("geoarrow.wkb")
 WKT = Symbol("geoarrow.wkt")
 BOX = Symbol("geoarrow.box")
 
-function ArrowTypes.JuliaType(::Val{POINT}, x, metadata)
-    D = length(x.types)
-    T = x.types[1]
-    return Geometry{PointTrait,D,T}
+# Helper to unwrap Union{Missing, T} to get T
+_unwrap_type(::Type{Union{Missing,T}}) where {T} = T
+_unwrap_type(::Type{T}) where {T} = T
+
+# Helper to get number of dimensions from a type
+_ndims(::Type{<:NTuple{N,T}}) where {N,T} = N
+_ndims(::Type{<:NamedTuple{names}}) where {names} = length(names)
+
+# Helper to get element type from a type
+_eltype(::Type{<:NTuple{N,T}}) where {N,T} = T
+_eltype(::Type{<:NamedTuple{names,<:Tuple{Vararg{T}}}}) where {names,T} = T
+
+function ArrowTypes.JuliaType(::Val{POINT}, x::Type, metadata)
+    T = _unwrap_type(x)
+    D = _ndims(T)
+    ET = _eltype(T)
+    return Geometry{PointTrait,D,ET}
 end
-ArrowTypes.JuliaType(::Val{LINESTRING}, x, metadata) = Geometry{LineStringTrait}
-ArrowTypes.JuliaType(::Val{POLYGON}, x, metadata) = Geometry{PolygonTrait}
-ArrowTypes.JuliaType(::Val{MULTIPOINT}, x, metadata) = Geometry{MultiPointTrait}
-ArrowTypes.JuliaType(::Val{MULTILINESTRING}, x, metadata) = Geometry{MultiLineStringTrait}
-ArrowTypes.JuliaType(::Val{MULTIPOLYGON}, x, metadata) = Geometry{MultiPolygonTrait}
-ArrowTypes.JuliaType(::Val{WKB}, x, metadata) = GeoFormatTypes.WellKnownBinary
-ArrowTypes.JuliaType(::Val{WKT}, x, metadata) = GeoFormatTypes.WellKnownText
-function ArrowTypes.JuliaType(::Val{BOX}, x, metadata)
-    D = length(x.types)
+ArrowTypes.JuliaType(::Val{LINESTRING}, x::Type, metadata) = Geometry{LineStringTrait}
+ArrowTypes.JuliaType(::Val{POLYGON}, x::Type, metadata) = Geometry{PolygonTrait}
+ArrowTypes.JuliaType(::Val{MULTIPOINT}, x::Type, metadata) = Geometry{MultiPointTrait}
+ArrowTypes.JuliaType(::Val{MULTILINESTRING}, x::Type, metadata) = Geometry{MultiLineStringTrait}
+ArrowTypes.JuliaType(::Val{MULTIPOLYGON}, x::Type, metadata) = Geometry{MultiPolygonTrait}
+ArrowTypes.JuliaType(::Val{WKB}, x::Type, metadata) = GeoFormatTypes.WellKnownBinary
+ArrowTypes.JuliaType(::Val{WKT}, x::Type, metadata) = GeoFormatTypes.WellKnownText
+function ArrowTypes.JuliaType(::Val{BOX}, x::Type, metadata)
+    T = _unwrap_type(x)
+    D = _ndims(T)
     if D == 4
         Extents.Extent{(:X, :Y)}
     elseif D == 6
@@ -84,15 +98,23 @@ ArrowTypes.toarrow(ex::Extents.Extent{(:X, :Y, :Z, :M)}) = (; xmin=ex.X[1], ymin
 
 ArrowTypes.fromarrow(::Type{GeoFormatTypes.WellKnownBinary}, x) = GeoFormatTypes.WellKnownBinary(GeoFormatTypes.Geom(), x)
 ArrowTypes.fromarrow(::Type{GeoFormatTypes.WellKnownText}, x) = GeoFormatTypes.WellKnownText(GeoFormatTypes.Geom(), String(x))  # should be StringView
+
+# fromarrow for list-based encodings (interleaved)
 function ArrowTypes.fromarrow(::Type{Geometry{X}}, x) where {X}
     nt = nested_eltype(x)
     D = length(nt.types)
     return Geometry{X,D,Float64}(x)
 end
-function fromarrow(::Type{GeoArrow.Geometry{X}}, nt::NamedTuple) where X
-    return Geometry{X,length(nt),Float64}(nt)
-end
-ArrowTypes.fromarrow(::Type{Extents.Extent}, x) = Extents.Extent(X=(x.xmin, x.xmax), Y=(x.ymin, x.ymax))
+
+# fromarrow for separated Point encoding (Struct with x, y, [z, [m]] fields)
+ArrowTypes.fromarrow(::Type{Geometry{PointTrait,2,T}}, x, y) where {T} = Geometry{PointTrait,2,T}((x, y))
+ArrowTypes.fromarrow(::Type{Geometry{PointTrait,3,T}}, x, y, z) where {T} = Geometry{PointTrait,3,T}((x, y, z))
+ArrowTypes.fromarrow(::Type{Geometry{PointTrait,4,T}}, x, y, z, m) where {T} = Geometry{PointTrait,4,T}((x, y, z, m))
+
+# fromarrow for Box/Extent (Struct with xmin, ymin, xmax, ymax, [zmin, zmax, [mmin, mmax]] fields)
+ArrowTypes.fromarrow(::Type{Extents.Extent{(:X, :Y)}}, xmin, ymin, xmax, ymax) = Extents.Extent(X=(xmin, xmax), Y=(ymin, ymax))
+ArrowTypes.fromarrow(::Type{Extents.Extent{(:X, :Y, :Z)}}, xmin, ymin, zmin, xmax, ymax, zmax) = Extents.Extent(X=(xmin, xmax), Y=(ymin, ymax), Z=(zmin, zmax))
+ArrowTypes.fromarrow(::Type{Extents.Extent{(:X, :Y, :Z, :M)}}, xmin, ymin, zmin, mmin, xmax, ymax, zmax, mmax) = Extents.Extent(X=(xmin, xmax), Y=(ymin, ymax), Z=(zmin, zmax), M=(mmin, mmax))
 
 nested_eltype(x) = nested_eltype(typeof(x))
 nested_eltype(::Type{Union{Missing,T}}) where {T} = nested_eltype(T)
