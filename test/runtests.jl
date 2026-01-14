@@ -7,14 +7,15 @@ using GeoFormatTypes
 using DataFrames
 using Extents
 
-mkpath(joinpath(@__DIR__, "data/write"))
+const testdatadir = joinpath(@__DIR__, "data")
+mkpath(joinpath(testdatadir, "write"))
 
 @testset "GeoArrow.jl" begin
     @testset "Test datasets" begin
         # Data taken from the geopandas tests, courtesy of Joris Van den Bossche
         for url in readlines("links.txt")
             (isempty(strip(url)) || startswith(url, "#")) && continue
-            fn = joinpath("data", split(url, "/")[end])
+            fn = joinpath(testdatadir, split(url, "/")[end])
             isfile(fn) && continue
             try
                 @info "Downloading $fn"
@@ -24,13 +25,13 @@ mkpath(joinpath(@__DIR__, "data/write"))
             end
         end
 
-        for arrowfn in filter(endswith(r".arrow|.arrows"), readdir("data", join=true))
+        for arrowfn in filter(endswith(r".arrow|.arrows"), readdir(testdatadir, join=true))
             @testset "$arrowfn" begin
                 t = Arrow.Table(arrowfn)
                 geom = t.geometry[1]
                 @test GeoInterface.isgeometry(geom)
                 @test GeoInterface.geomtrait(geom) isa GeoInterface.AbstractGeometryTrait
-                @test GeoInterface.ncoord(geom) in [2, 3]
+                @test GeoInterface.ncoord(geom) in [2, 3, 4]
                 @test GeoInterface.testgeometry(geom)
 
                 io = IOBuffer()

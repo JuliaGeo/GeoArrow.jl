@@ -79,8 +79,8 @@ ArrowTypes.arrowname(::Type{Geometry{PolygonTrait}}) = POLYGON
 ArrowTypes.arrowname(::Type{Geometry{MultiPointTrait}}) = MULTIPOINT
 ArrowTypes.arrowname(::Type{Geometry{MultiLineStringTrait}}) = MULTILINESTRING
 ArrowTypes.arrowname(::Type{Geometry{MultiPolygonTrait}}) = MULTIPOLYGON
-ArrowTypes.arrowname(::Type{Wrapper{WellKnownBinary,T,N,G}}) where {T,N,G} = WKB
-ArrowTypes.arrowname(::Type{Wrapper{WellKnownText,T,N,G}}) where {T,N,G} = WKT
+ArrowTypes.arrowname(::Type{GeoFormatTypes.WellKnownBinary}) = WKB
+ArrowTypes.arrowname(::Type{GeoFormatTypes.WellKnownText}) = WKT
 ArrowTypes.arrowname(::Type{Wrapper{E,PointTrait,N,G}}) where {E<:AbstractNativeEncoding,N,G} = POINT
 ArrowTypes.arrowname(::Type{Wrapper{E,LineStringTrait,N,G}}) where {E<:AbstractNativeEncoding,N,G} = LINESTRING
 ArrowTypes.arrowname(::Type{Wrapper{E,PolygonTrait,N,G}}) where {E<:AbstractNativeEncoding,N,G} = POLYGON
@@ -95,6 +95,8 @@ ArrowTypes.toarrow(x::Wrapper) = data(x)
 ArrowTypes.toarrow(ex::Extents.Extent{(:X, :Y)}) = (; xmin=ex.X[1], ymin=ex.Y[1], xmax=ex.X[2], ymax=ex.Y[2])
 ArrowTypes.toarrow(ex::Extents.Extent{(:X, :Y, :Z)}) = (; xmin=ex.X[1], ymin=ex.Y[1], zmin=ex.Z[1], xmax=ex.X[2], ymax=ex.Y[2], zmax=ex.Z[2])
 ArrowTypes.toarrow(ex::Extents.Extent{(:X, :Y, :Z, :M)}) = (; xmin=ex.X[1], ymin=ex.Y[1], zmin=ex.Z[1], mmin=ex.M[1], xmax=ex.X[2], ymax=ex.Y[2], zmax=ex.Z[2], mmax=ex.M[2])
+ArrowTypes.toarrow(geom::GeoFormatTypes.WellKnownBinary{GeoFormatTypes.Geom}) = GeoFormatTypes.val(geom)
+ArrowTypes.toarrow(geom::GeoFormatTypes.WellKnownText{GeoFormatTypes.Geom}) = GeoFormatTypes.val(geom)
 
 ArrowTypes.fromarrow(::Type{GeoFormatTypes.WellKnownBinary}, x) = GeoFormatTypes.WellKnownBinary(GeoFormatTypes.Geom(), x)
 ArrowTypes.fromarrow(::Type{GeoFormatTypes.WellKnownText}, x) = GeoFormatTypes.WellKnownText(GeoFormatTypes.Geom(), String(x))  # should be StringView

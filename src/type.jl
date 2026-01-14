@@ -50,6 +50,7 @@ end
 Base.:(==)(x::Wrapper{E,T,N,G}, y::Wrapper{E,T,N,G}) where {E,T,N,G} = x.geom == y.geom
 Base.show(io::IO, ::Wrapper{E,T,G}) where {E,T,G} = print(io, "$T geometry encoded as $E")
 Wrapper(e::AbstractEncoding, x) = Wrapper{typeof(e),typeof(GeoInterface.geomtrait(x)),GeoInterface.ncoord(x),typeof(x)}(x)
+Wrapper(::AbstractEncoding, ::Missing) = missing
 Wrapper(x) = Wrapper(Interleaved(), x)
 
 data(x::Wrapper{E,T,N,G}) where {E,T,N,G} = _coordinates(E(), T(), Val{N}(), x.geom)

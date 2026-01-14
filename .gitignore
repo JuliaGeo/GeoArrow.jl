@@ -6,6 +6,7 @@
 test/.cpenv
 .CondaPkg
 *.arrow
+*.arrows
 
 # pixi environments
 .pixi
