@@ -13,6 +13,7 @@ mkpath(joinpath(@__DIR__, "data/write"))
     @testset "Test datasets" begin
         # Data taken from the geopandas tests, courtesy of Joris Van den Bossche
         for url in readlines("links.txt")
+            (isempty(strip(url)) || startswith(url, "#")) && continue
             fn = joinpath("data", split(url, "/")[end])
             isfile(fn) && continue
             try
@@ -23,7 +24,7 @@ mkpath(joinpath(@__DIR__, "data/write"))
             end
         end
 
-        for arrowfn in filter(endswith("arrow"), readdir("data", join=true))
+        for arrowfn in filter(endswith(r".arrow|.arrows"), readdir("data", join=true))
             @testset "$arrowfn" begin
                 t = Arrow.Table(arrowfn)
                 geom = t.geometry[1]
