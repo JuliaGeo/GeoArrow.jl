@@ -29,9 +29,10 @@ function write(path, t; geocolumns=GeoInterface.geometrycolumns(t), crs=GeoInter
         column in Tables.columnnames(t) || error("Geometry column $column not found in table")
         data = Tables.getcolumn(t, column)
         T = nonmissingtype(Tables.columntype(t, column))
-        GeoInterface.isgeometry(T) || error("Geometry in $column must support the GeoInterface")
-        ct = merge(ct, NamedTuple{(column,)}((Wrapper.(Ref(encoding), data),)))
-
+        if ArrowTypes.arrowname(T) == Symbol("")
+            GeoInterface.isgeometry(T) || error("Geometry type $T in column $column must support the GeoInterface")
+            ct = merge(ct, NamedTuple{(column,)}((Wrapper.(Ref(encoding), data),)))
+        end
         geometa = Dict("ARROW:extension:metadata" => JSON3.write(dcrs))
         if haskey(colmetadata, column)
             merge!(colmetadata[column], geometa)

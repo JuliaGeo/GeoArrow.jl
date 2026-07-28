@@ -6,6 +6,7 @@ Base.:(==)(x::Geometry{X,D,T,G}, y::Geometry{X,D,T,G}) where {X,D,T,G} = x.geom 
 Base.show(io::IO, x::Geometry{X,D,T}) where {X,D,T} = print(io, "$X geometry in $(D)D with eltype $T")
 Geometry{X,D,T}(x) where {X,D,T} = Geometry{X,D,T,typeof(x)}(x)
 Geometry{PointTrait}(x::Vararg{T,D}) where {T,D} = Geometry{PointTrait,D,T}(reinterpret(NTuple{D,T}, x))
+Geometry{PointTrait,D,T}(x, y, z, m) where {T,D} = Geometry{PointTrait,D,T}((x, y, z, m))
 Geometry{PointTrait,D,T}(x, y, z) where {T,D} = Geometry{PointTrait,D,T}((x, y, z))
 Geometry{PointTrait,D,T}(x, y) where {T,D} = Geometry{PointTrait,D,T}((x, y))
 
@@ -53,6 +54,7 @@ end
 Base.:(==)(x::Wrapper{E,T,N,G}, y::Wrapper{E,T,N,G}) where {E,T,N,G} = x.geom == y.geom
 Base.show(io::IO, ::Wrapper{E,T,G}) where {E,T,G} = print(io, "$T geometry encoded as $E")
 Wrapper(e::AbstractEncoding, x) = Wrapper{typeof(e),typeof(GeoInterface.geomtrait(x)),GeoInterface.ncoord(x),typeof(x)}(x)
+Wrapper(::AbstractEncoding, ::Missing) = missing
 Wrapper(x) = Wrapper(Interleaved(), x)
 
 data(x::Wrapper{E,T,N,G}) where {E,T,N,G} = _coordinates(E(), T(), Val{N}(), x.geom)
