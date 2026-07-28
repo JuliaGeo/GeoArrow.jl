@@ -38,12 +38,13 @@ ArrowTypes.JuliaType(::Val{WKT}, x::Type, metadata) = GeoFormatTypes.WellKnownTe
 function ArrowTypes.JuliaType(::Val{BOX}, x::Type, metadata)
     T = _unwrap_type(x)
     D = _ndims(T)
+    ET = _eltype(T)
     if D == 4
-        Extents.Extent{(:X, :Y)}
+        Extents.Extent{(:X, :Y),NTuple{2,NTuple{2,ET}}}
     elseif D == 6
-        Extents.Extent{(:X, :Y, :Z)}
+        Extents.Extent{(:X, :Y, :Z),NTuple{3,NTuple{2,ET}}}
     elseif D == 8
-        Extents.Extent{(:X, :Y, :Z, :M)}
+        Extents.Extent{(:X, :Y, :Z, :M),NTuple{4,NTuple{2,ET}}}
     else
         throw(ArgumentError("Invalid number of dimensions for Extent"))
     end
@@ -51,27 +52,30 @@ end
 ArrowTypes.ArrowKind(::Type{Geometry}) = ArrowTypes.ListKind()
 ArrowTypes.ArrowKind(::Type{<:Geometry{PointTrait,D,T}}) where {D,T} = ArrowTypes.FixedSizeListKind{D,T}()
 ArrowTypes.ArrowKind(::Type{Wrapper}) = ArrowTypes.ListKind()
-ArrowTypes.ArrowKind(::Type{Wrapper{Seperated, T, G}}) where {T,G} = ArrowTypes.StructKind()
-ArrowTypes.ArrowKind(::Type{Wrapper{Interleaved, T, N, G}}) where {T,N,G} = ArrowTypes.ListKind()
-ArrowTypes.ArrowKind(::Type{Wrapper{Interleaved, PointTrait, N, G}}) where {N,G} = ArrowTypes.FixedSizeListKind{N,Float64}()
-ArrowTypes.ArrowKind(::Type{Wrapper{WellKnownText, T, N, G}}) where {T,N,G} = ArrowTypes.ListKind()
-ArrowTypes.ArrowKind(::Type{Wrapper{WellKnownBinary, T, N, G}}) where {T,N,G} = ArrowTypes.ListKind()
+ArrowTypes.ArrowKind(::Type{Wrapper{Seperated,T,G}}) where {T,G} = ArrowTypes.StructKind()
+ArrowTypes.ArrowKind(::Type{Wrapper{Interleaved,T,N,G}}) where {T,N,G} = ArrowTypes.ListKind()
+ArrowTypes.ArrowKind(::Type{Wrapper{Interleaved,PointTrait,N,G}}) where {N,G} = ArrowTypes.FixedSizeListKind{N,Float64}()
+ArrowTypes.ArrowKind(::Type{Wrapper{WellKnownText,T,N,G}}) where {T,N,G} = ArrowTypes.ListKind()
+ArrowTypes.ArrowKind(::Type{Wrapper{WellKnownBinary,T,N,G}}) where {T,N,G} = ArrowTypes.ListKind()
 
 ArrowTypes.ArrowType(::Type{Geometry{X,D,T,G}}) where {X,D,T,G} = G
 ArrowTypes.ArrowType(::Type{Wrapper{WellKnownText,T,N,G}}) where {T,N,G} = String
 ArrowTypes.ArrowType(::Type{Wrapper{WellKnownBinary,T,N,G}}) where {T,N,G} = Vector{UInt8}
 ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,PointTrait,N,G}}) where {N,G} = NTuple{N,Float64}
 ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,LineStringTrait,N,G}}) where {N,G} = Vector{NTuple{N,Float64}}
-ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,MultiLineStringTrait,N,G}}) where {N,G} = Vector{Vector{NTuple{N,Float64}}}  
+ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,MultiLineStringTrait,N,G}}) where {N,G} = Vector{Vector{NTuple{N,Float64}}}
 ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,MultiPointTrait,N,G}}) where {N,G} = Vector{NTuple{N,Float64}}
 ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,PolygonTrait,N,G}}) where {N,G} = Vector{Vector{NTuple{N,Float64}}}
 ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,MultiPolygonTrait,N,G}}) where {N,G} = Vector{Vector{Vector{NTuple{N,Float64}}}}
 ArrowTypes.ArrowType(::Type{Wrapper{Seperated,PointTrait,N,G}}) where {N,G} = _named(NTuple{N,Float64})
 ArrowTypes.ArrowType(::Type{Wrapper{Seperated,LineStringTrait,N,G}}) where {N,G} = Vector{_named(NTuple{N,Float64})}
-ArrowTypes.ArrowType(::Type{Wrapper{Seperated,MultiLineStringTrait,N,G}}) where {N,G} = Vector{Vector{_named(NTuple{N,Float64})}}  
+ArrowTypes.ArrowType(::Type{Wrapper{Seperated,MultiLineStringTrait,N,G}}) where {N,G} = Vector{Vector{_named(NTuple{N,Float64})}}
 ArrowTypes.ArrowType(::Type{Wrapper{Seperated,MultiPointTrait,N,G}}) where {N,G} = Vector{_named(NTuple{N,Float64})}
 ArrowTypes.ArrowType(::Type{Wrapper{Seperated,PolygonTrait,N,G}}) where {N,G} = Vector{Vector{_named(NTuple{N,Float64})}}
 ArrowTypes.ArrowType(::Type{Wrapper{Seperated,MultiPolygonTrait,N,G}}) where {N,G} = Vector{Vector{Vector{_named(NTuple{N,Float64})}}}
+ArrowTypes.ArrowType(::Type{<:Extents.Extent{(:X, :Y),NTuple{2,NTuple{2,T}}}}) where {T} = @NamedTuple{xmin::T, ymin::T, xmax::T, ymax::T}
+ArrowTypes.ArrowType(::Type{<:Extents.Extent{(:X, :Y, :Z),NTuple{3,NTuple{2,T}}}}) where {T} = @NamedTuple{xmin::T, ymin::T, zmin::T, xmax::T, ymax::T, zmax::T}
+ArrowTypes.ArrowType(::Type{<:Extents.Extent{(:X, :Y, :Z, :M),NTuple{4,NTuple{2,T}}}}) where {T} = @NamedTuple{xmin::T, ymin::T, zmin::T, mmin::T, xmax::T, ymax::T, zmax::T, mmax::T}
 
 ArrowTypes.arrowname(::Type{Geometry{PointTrait}}) = POINT
 ArrowTypes.arrowname(::Type{Geometry{LineStringTrait}}) = LINESTRING
@@ -79,15 +83,17 @@ ArrowTypes.arrowname(::Type{Geometry{PolygonTrait}}) = POLYGON
 ArrowTypes.arrowname(::Type{Geometry{MultiPointTrait}}) = MULTIPOINT
 ArrowTypes.arrowname(::Type{Geometry{MultiLineStringTrait}}) = MULTILINESTRING
 ArrowTypes.arrowname(::Type{Geometry{MultiPolygonTrait}}) = MULTIPOLYGON
-ArrowTypes.arrowname(::Type{GeoFormatTypes.WellKnownBinary}) = WKB
-ArrowTypes.arrowname(::Type{GeoFormatTypes.WellKnownText}) = WKT
+ArrowTypes.arrowname(::Type{<:GeoFormatTypes.WellKnownBinary}) = WKB
+ArrowTypes.arrowname(::Type{<:GeoFormatTypes.WellKnownText}) = WKT
+ArrowTypes.arrowname(::Type{Wrapper{WellKnownBinary,T,N,G}}) where {T,N,G} = WKB
+ArrowTypes.arrowname(::Type{Wrapper{WellKnownText,T,N,G}}) where {T,N,G} = WKT
 ArrowTypes.arrowname(::Type{Wrapper{E,PointTrait,N,G}}) where {E<:AbstractNativeEncoding,N,G} = POINT
 ArrowTypes.arrowname(::Type{Wrapper{E,LineStringTrait,N,G}}) where {E<:AbstractNativeEncoding,N,G} = LINESTRING
 ArrowTypes.arrowname(::Type{Wrapper{E,PolygonTrait,N,G}}) where {E<:AbstractNativeEncoding,N,G} = POLYGON
 ArrowTypes.arrowname(::Type{Wrapper{E,MultiPointTrait,N,G}}) where {E<:AbstractNativeEncoding,N,G} = MULTIPOINT
 ArrowTypes.arrowname(::Type{Wrapper{E,MultiLineStringTrait,N,G}}) where {E<:AbstractNativeEncoding,N,G} = MULTILINESTRING
 ArrowTypes.arrowname(::Type{Wrapper{E,MultiPolygonTrait,N,G}}) where {E<:AbstractNativeEncoding,N,G} = MULTIPOLYGON
-ArrowTypes.arrowname(::Type{Extents.Extent}) = BOX
+ArrowTypes.arrowname(::Type{<:Extents.Extent}) = BOX
 
 ArrowTypes.toarrow(x::Geometry) = x.geom
 ArrowTypes.toarrow(x::Wrapper{E,T,<:Geometry}) where {E,T} = x.geom
@@ -114,15 +120,15 @@ ArrowTypes.fromarrow(::Type{Geometry{PointTrait,3,T}}, x, y, z) where {T} = Geom
 ArrowTypes.fromarrow(::Type{Geometry{PointTrait,4,T}}, x, y, z, m) where {T} = Geometry{PointTrait,4,T}((x, y, z, m))
 
 # fromarrow for Box/Extent (Struct with xmin, ymin, xmax, ymax, [zmin, zmax, [mmin, mmax]] fields)
-ArrowTypes.fromarrow(::Type{Extents.Extent{(:X, :Y)}}, xmin, ymin, xmax, ymax) = Extents.Extent(X=(xmin, xmax), Y=(ymin, ymax))
-ArrowTypes.fromarrow(::Type{Extents.Extent{(:X, :Y, :Z)}}, xmin, ymin, zmin, xmax, ymax, zmax) = Extents.Extent(X=(xmin, xmax), Y=(ymin, ymax), Z=(zmin, zmax))
-ArrowTypes.fromarrow(::Type{Extents.Extent{(:X, :Y, :Z, :M)}}, xmin, ymin, zmin, mmin, xmax, ymax, zmax, mmax) = Extents.Extent(X=(xmin, xmax), Y=(ymin, ymax), Z=(zmin, zmax), M=(mmin, mmax))
+ArrowTypes.fromarrow(::Type{<:Extents.Extent{(:X, :Y)}}, xmin, ymin, xmax, ymax) = Extents.Extent(X=(xmin, xmax), Y=(ymin, ymax))
+ArrowTypes.fromarrow(::Type{<:Extents.Extent{(:X, :Y, :Z)}}, xmin, ymin, zmin, xmax, ymax, zmax) = Extents.Extent(X=(xmin, xmax), Y=(ymin, ymax), Z=(zmin, zmax))
+ArrowTypes.fromarrow(::Type{<:Extents.Extent{(:X, :Y, :Z, :M)}}, xmin, ymin, zmin, mmin, xmax, ymax, zmax, mmax) = Extents.Extent(X=(xmin, xmax), Y=(ymin, ymax), Z=(zmin, zmax), M=(mmin, mmax))
 
 nested_eltype(x) = nested_eltype(typeof(x))
 nested_eltype(::Type{Union{Missing,T}}) where {T} = nested_eltype(T)
 nested_eltype(::Type{T}) where {T<:AbstractArray} = nested_eltype(eltype(T))
 nested_eltype(::Type{T}) where {T} = T
 
-_named(::Type{NTuple{2, T}}) where {T} = @NamedTuple{x::Float64, y::Float64}
-_named(::Type{NTuple{3, T}}) where {T} = @NamedTuple{x::Float64, y::Float64, z::Float64}
-_named(::Type{NTuple{4, T}}) where {T} = @NamedTuple{x::Float64, y::Float64, z::Float64, m::Float64}
+_named(::Type{NTuple{2,T}}) where {T} = @NamedTuple{x::Float64, y::Float64}
+_named(::Type{NTuple{3,T}}) where {T} = @NamedTuple{x::Float64, y::Float64, z::Float64}
+_named(::Type{NTuple{4,T}}) where {T} = @NamedTuple{x::Float64, y::Float64, z::Float64, m::Float64}

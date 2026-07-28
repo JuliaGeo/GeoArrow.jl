@@ -30,7 +30,7 @@ function write(path, t; geocolumns=GeoInterface.geometrycolumns(t), crs=GeoInter
         data = Tables.getcolumn(t, column)
         T = nonmissingtype(Tables.columntype(t, column))
         if ArrowTypes.arrowname(T) == Symbol("")
-            GeoInterface.isgeometry(T) || error("Geometry in $column must support the GeoInterface")
+            GeoInterface.isgeometry(T) || error("Geometry type $T in column $column must support the GeoInterface")
             ct = merge(ct, NamedTuple{(column,)}((Wrapper.(Ref(encoding), data),)))
         end
         geometa = Dict("ARROW:extension:metadata" => JSON3.write(dcrs))
