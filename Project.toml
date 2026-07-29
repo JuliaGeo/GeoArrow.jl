@@ -1,7 +1,7 @@
 name = "GeoArrow"
 uuid = "5bc3a8d9-1bfb-4624-ba94-a391279174d6"
 authors = ["Maarten Pronk <git@evetion.nl> and contributors"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
