@@ -16,7 +16,8 @@ function write(path, t; geocolumns=GeoInterface.geometrycolumns(t), crs=GeoInter
     ct = Tables.columntable(t)
     metadata = DataAPI.metadata(t)
     if !isnothing(metadata)
-        metadata = (k=>string(v) for (k,v) in pairs(metadata))
+        # GEOINTERFACE: keys hold Julia objects; GeoArrow stores the CRS per column
+        metadata = (k=>string(v) for (k,v) in pairs(metadata) if !startswith(k, "GEOINTERFACE:"))
     end
     colmetadata = Dict{Symbol,Dict{String,String}}()
     tcolmetadata = DataAPI.colmetadata(t)
@@ -52,6 +53,11 @@ Any kwargs are passed to Arrow.Table.
 function read(path; kwargs...)
     at = Arrow.Table(path; kwargs...)
     t = DataFrame(at, copycols=false)
+
+    # Remove GEOINTERFACE: keys stringified by older versions of GeoArrow.write
+    for key in keys(DataAPI.metadata(t))
+        startswith(key, "GEOINTERFACE:") && DataAPI.deletemetadata!(t, key)
+    end
 
     # set GeoInterface metadata
     names = []
