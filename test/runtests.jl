@@ -138,4 +138,25 @@ mkpath(joinpath(testdatadir, "write"))
         @test DataAPI.colmetadata(dfn)[:a]["description"] == "A normal column"
         @test DataAPI.colmetadata(dfn)[:geometry]["description"] == "A point geometry"
     end
+    @testset "CRS" begin
+        df = DataFrame(a=1:2, geometry=[(1.0, 2.0), (3.0, 4.0)])
+        io = IOBuffer()
+        GeoArrow.write(io, df; crs=GeoFormatTypes.EPSG(4326))
+        seekstart(io)
+        dfn = GeoArrow.read(io)
+        crs = GeoInterface.crs(dfn)
+        @test crs isa GeoFormatTypes.ProjJSON
+        @test occursin("4326", GeoFormatTypes.val(crs))
+        # Replacing a column (as GeoDataFrames does) keeps the GeoInterface metadata
+        dfn[!, :geometry] = copy(dfn.geometry)
+        @test GeoInterface.crs(dfn) == crs
+        @test GeoInterface.geometrycolumns(dfn) == (:geometry,)
+
+        # A table read with a CRS can be written again, keeping its CRS
+        t = GeoArrow.read(joinpath(testdatadir, "example-crs_vermont-4326_wkb.arrows"))
+        io = IOBuffer()
+        GeoArrow.write(io, t)
+        seekstart(io)
+        @test occursin("4326", GeoFormatTypes.val(GeoInterface.crs(GeoArrow.read(io))))
+    end
 end
