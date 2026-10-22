@@ -33,7 +33,7 @@ function write(path, t; geocolumns=GeoInterface.geometrycolumns(t), crs=GeoInter
             GeoInterface.isgeometry(T) || error("Geometry type $T in column $column must support the GeoInterface")
             ct = merge(ct, NamedTuple{(column,)}((Wrapper.(Ref(encoding), data),)))
         end
-        geometa = Dict("ARROW:extension:metadata" => JSON3.write(dcrs))
+        geometa = Dict("ARROW:extension:metadata" => JSON.json(dcrs))
         if haskey(colmetadata, column)
             merge!(colmetadata[column], geometa)
         else
@@ -63,7 +63,7 @@ function read(path; kwargs...)
         "ARROW:extension:metadata" in keys(metadata) || continue
         extmetadata = metadata["ARROW:extension:metadata"]
         isempty(extmetadata) && continue
-        crs = get(JSON3.read(extmetadata), :crs, nothing)
+        crs = get(JSON.parse(extmetadata), "crs", nothing)
         isnothing(crs) || DataAPI.metadata!(t, "GEOINTERFACE:crs", crs)
     end
     isempty(names) || DataAPI.metadata!(t, "GEOINTERFACE:geometrycolumns", Tuple(names))

@@ -2,7 +2,7 @@ module GeoArrow
 using Arrow
 using GeoInterface
 using GeoFormatTypes
-using JSON3
+import JSON
 using WellKnownGeometry
 using Extents
 using Tables
