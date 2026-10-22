@@ -93,7 +93,7 @@ mkpath(joinpath(testdatadir, "write"))
 
         w = GeoArrow.Wrapper(GeoArrow.WellKnownBinary(), g)
         @test ArrowTypes.ArrowKind(typeof(w)) == ArrowTypes.ListKind()
-        @test ArrowTypes.ArrowType(typeof(w)) == Vector{UInt8}
+        @test ArrowTypes.ArrowType(typeof(w)) == Base.CodeUnits{UInt8,String}
         @test ArrowTypes.arrowname(typeof(w)) == Symbol("geoarrow.wkb")
         @test ArrowTypes.toarrow(w)[1:10] == UInt8[0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
@@ -108,6 +108,25 @@ mkpath(joinpath(testdatadir, "write"))
         @test ArrowTypes.ArrowType(typeof(w)) == @NamedTuple{x::Float64, y::Float64}
         @test ArrowTypes.arrowname(typeof(w)) == Symbol("geoarrow.point")
         @test ArrowTypes.toarrow(w) == (; x=1.0, y=2.0)
+    end
+    @testset "WKB is stored as Binary" begin
+        storagetype(io) = (seekstart(io); nonmissingtype(eltype(Arrow.Table(io; convert=false).geometry)))
+        df = DataFrame(geometry=[GeoInterface.Point(1.0, 2.0)])
+        io = IOBuffer()
+        GeoArrow.write(io, df; encoding=GeoArrow.WellKnownBinary())
+        @test storagetype(io) <: Base.CodeUnits  # Binary, not List<UInt8>
+        seekstart(io)
+        @test GeoInterface.coordinates(GeoArrow.read(io).geometry[1]) == [1.0, 2.0]
+
+        # WKB read from a file is written as Binary as well
+        t = Arrow.Table(joinpath(testdatadir, "example_point_wkb.arrows"))
+        io = IOBuffer()
+        GeoArrow.write(io, t)
+        @test storagetype(io) <: Base.CodeUnits
+
+        io = IOBuffer()
+        GeoArrow.write(io, df; encoding=GeoArrow.WellKnownText())
+        @test storagetype(io) == String
     end
     @testset "Box" begin
         box_type = @NamedTuple{xmin::Float64, ymin::Float64, xmax::Float64, ymax::Float64}
