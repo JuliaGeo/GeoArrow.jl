@@ -64,6 +64,16 @@ function read(path; kwargs...)
         startswith(key, "GEOINTERFACE:") && DataAPI.deletemetadata!(t, key)
     end
 
+    # Arrow.jl has no column metadata for a column with several record batches. Each batch
+    # has the field's metadata, so take it from the first.
+    for column in propertynames(t)
+        col = t[!, column]
+        col isa Arrow.ChainedVector && !isempty(col.arrays) || continue
+        meta = Arrow.getmetadata(first(col.arrays))
+        isnothing(meta) && continue
+        foreach(((k, v),) -> DataAPI.colmetadata!(t, column, k, v; style=:default), meta)
+    end
+
     # set GeoInterface metadata
     names = []
     for (column, metadata) in DataAPI.colmetadata(t)

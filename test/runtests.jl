@@ -161,6 +161,18 @@ mkpath(joinpath(testdatadir, "write"))
         @test DataAPI.colmetadata(dfn)[:a]["description"] == "A normal column"
         @test DataAPI.colmetadata(dfn)[:geometry]["description"] == "A point geometry"
     end
+    @testset "Several record batches" begin
+        io = IOBuffer()
+        GeoArrow.write(io, DataFrame(geometry=[(1.0, 2.0)]); crs=GeoFormatTypes.EPSG(4326))
+        t = Arrow.Table(seekstart(io); convert=false)
+        io = IOBuffer()
+        Arrow.write(io, Arrow.Tables.partitioner([t, t]))
+        dfn = GeoArrow.read(seekstart(io))
+        @test length(dfn.geometry.arrays) == 2
+        @test GeoInterface.geometrycolumns(dfn) == (:geometry,)
+        @test occursin("4326", GeoFormatTypes.val(GeoInterface.crs(dfn)))
+        @test DataAPI.colmetadata(dfn, :geometry, "ARROW:extension:name") == "geoarrow.point"
+    end
     @testset "GeoInterface metadata is not stringified" begin
         df = DataFrame(a=1, geometry=[(1., 2.)])
         DataAPI.metadata!(df, "GEOINTERFACE:crs", GeoFormatTypes.EPSG(4326))
