@@ -10,10 +10,12 @@ using StringViews
 using Proj
 using DataAPI
 using DataFrames
+using PrecompileTools: @setup_workload, @compile_workload
 
 include("type.jl")
 include("arrow.jl")
 include("io.jl")
+include("precompile.jl")
 
 export read, write
 
