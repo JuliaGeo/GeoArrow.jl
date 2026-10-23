@@ -6,7 +6,7 @@ import JSON
 using WellKnownGeometry
 using Extents
 using Tables
-using StringViews
+using StringViews: StringView  # Base exports StringView since Julia 1.15
 using Proj
 using DataAPI
 using DataFrames
