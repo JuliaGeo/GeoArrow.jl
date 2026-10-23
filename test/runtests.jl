@@ -47,38 +47,42 @@ mkpath(joinpath(testdatadir, "write"))
         end
     end
     @testset "Python" begin
-        Sys.iswindows() && return  # doesn't work on Windows
-
-        # ENV["JULIA_CONDAPKG_OFFLINE"] = true  # for running locally
-        ENV["JULIA_CONDAPKG_ENV"] = joinpath(@__DIR__, ".cpenv")
-        try
-            using PythonCall
-        catch e
-            @error "PythonCall not available:"
-            @error e
-            return
+        # A `return` here would skip all remaining testsets, so use a flag
+        python = !Sys.iswindows()  # doesn't work on Windows
+        if python
+            # ENV["JULIA_CONDAPKG_OFFLINE"] = true  # for running locally
+            ENV["JULIA_CONDAPKG_ENV"] = joinpath(@__DIR__, ".cpenv")
+            try
+                using PythonCall
+            catch e
+                @error "PythonCall not available:"
+                @error e
+                python = false
+            end
         end
-        feather = pyimport("pyarrow.feather")
+        if python
+            feather = pyimport("pyarrow.feather")
 
-        for arrowfn in filter(endswith("arrow"), readdir("data", join=true))
-            @testset "$arrowfn" begin
-                t = GeoArrow.read(arrowfn)
-                geom = t.geometry[1]
+            for arrowfn in filter(endswith("arrow"), readdir("data", join=true))
+                @testset "$arrowfn" begin
+                    t = GeoArrow.read(arrowfn)
+                    geom = t.geometry[1]
 
-                fn = joinpath("data/write", basename(arrowfn))
-                GeoArrow.write(fn, t)
+                    fn = joinpath("data/write", basename(arrowfn))
+                    GeoArrow.write(fn, t)
 
-                # Read with Python
-                # gdf = geopandas.read_feather(fn)
-                # print(gdf.geometry.type)
-                t = feather.read_table(fn)
-                meta = t.schema.field(-1).metadata
-                @test length(meta.keys()) == 2
-                @test any(occursin.("geoarrow", string.(meta.values())))
+                    # Read with Python
+                    # gdf = geopandas.read_feather(fn)
+                    # print(gdf.geometry.type)
+                    t = feather.read_table(fn)
+                    meta = t.schema.field(-1).metadata
+                    @test length(meta.keys()) == 2
+                    @test any(occursin.("geoarrow", string.(meta.values())))
 
-                # Read with Julia
-                tt = GeoArrow.read(fn)
-                tt.geometry[1] == geom
+                    # Read with Julia
+                    tt = GeoArrow.read(fn)
+                    tt.geometry[1] == geom
+                end
             end
         end
     end
