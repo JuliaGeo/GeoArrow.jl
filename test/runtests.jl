@@ -161,6 +161,24 @@ mkpath(joinpath(testdatadir, "write"))
         @test DataAPI.colmetadata(dfn)[:a]["description"] == "A normal column"
         @test DataAPI.colmetadata(dfn)[:geometry]["description"] == "A point geometry"
     end
+    @testset "GeoInterface metadata is not stringified" begin
+        df = DataFrame(a=1, geometry=[(1., 2.)])
+        DataAPI.metadata!(df, "GEOINTERFACE:crs", GeoFormatTypes.EPSG(4326))
+        DataAPI.metadata!(df, "GEOINTERFACE:geometrycolumns", (:geometry,))
+        io = IOBuffer()
+        GeoArrow.write(io, df)
+        seekstart(io)
+        @test !any(startswith("GEOINTERFACE:"), keys(Arrow.getmetadata(Arrow.Table(io))))
+
+        # Files written by older versions contain the stringified CRS
+        io = IOBuffer()
+        Arrow.write(io, (; geometry=[GeoArrow.Wrapper((1., 2.))]);
+            metadata=["GEOINTERFACE:crs" => "GeoFormatTypes.EPSG{1}((4326,))"])
+        seekstart(io)
+        dfn = GeoArrow.read(io)
+        @test isnothing(GeoInterface.crs(dfn))
+        @test GeoInterface.geometrycolumns(dfn) == (:geometry,)
+    end
     @testset "CRS" begin
         df = DataFrame(a=1:2, geometry=[(1.0, 2.0), (3.0, 4.0)])
         io = IOBuffer()
