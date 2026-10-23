@@ -58,6 +58,13 @@ Any kwargs are passed to Arrow.Table.
 function read(path; kwargs...)
     at = Arrow.Table(path; kwargs...)
     t = DataFrame(at, copycols=false)
+    for column in propertynames(t)
+        nonmissingtype(eltype(t[!, column])) <: GeoFormatTypes.WellKnownBinary || continue
+        metadata = DataAPI.colmetadata(t, column)
+        t[!, column] = _keepalive(t[!, column])
+        # Replacing a column drops its metadata
+        foreach(((k, v),) -> DataAPI.colmetadata!(t, column, k, v; style=:default), metadata)
+    end
 
     # Remove GEOINTERFACE: keys stringified by older versions of GeoArrow.write
     for key in keys(DataAPI.metadata(t))
@@ -81,6 +88,18 @@ function read(path; kwargs...)
 
     return t
 end
+
+# Arrow.jl reads Binary data into a vector that doesn't keep the file's memory (`arrow`) alive,
+# so WKB geometries, which are views into that vector, can outlive the memory. Use a view into
+# `arrow` instead, which keeps it alive.
+function _keepalive(l::Arrow.List{T,O,Vector{UInt8}}) where {T,O}
+    offset = signed(pointer(l.data) - pointer(l.arrow))
+    0 <= offset <= length(l.arrow) - length(l.data) || return l
+    data = view(l.arrow, offset .+ (1:length(l.data)))
+    return Arrow.List{T,O,typeof(data)}(l.arrow, l.validity, l.offsets, data, length(l), l.metadata)
+end
+_keepalive(c::Arrow.ChainedVector) = Arrow.ChainedVector(map(_keepalive, c.arrays))
+_keepalive(x) = x
 
 # The CRS is preferably a PROJJSON object, otherwise a string in any CRS format
 _crs(crs::AbstractDict) = GeoFormatTypes.ProjJSON(JSON.json(crs))

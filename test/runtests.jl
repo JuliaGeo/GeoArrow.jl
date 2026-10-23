@@ -200,4 +200,16 @@ mkpath(joinpath(testdatadir, "write"))
         seekstart(io)
         @test occursin("4326", GeoFormatTypes.val(GeoInterface.crs(GeoArrow.read(io))))
     end
+    @testset "WKB geometry outlives its table" begin
+        # Used to point into the file's memory, which is freed once the table is collected
+        wkbgeom(x) = GeoArrow.read(x).geometry[end]  # so the table isn't kept alive here
+        fn = joinpath(testdatadir, "example-polygon-wkb.arrow")
+        geom = wkbgeom(fn)
+        io = IOBuffer()  # several record batches
+        Arrow.write(io, Arrow.Tables.partitioner([GeoArrow.read(fn), GeoArrow.read(fn)]))
+        geom2 = wkbgeom(seekstart(io))
+        GC.gc()
+        @test GeoInterface.testgeometry(geom)
+        @test GeoInterface.testgeometry(geom2)
+    end
 end
