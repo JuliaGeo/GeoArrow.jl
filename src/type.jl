@@ -58,8 +58,9 @@ Wrapper(::AbstractEncoding, ::Missing) = missing
 Wrapper(x) = Wrapper(Interleaved(), x)
 
 data(x::Wrapper{E,T,N,G}) where {E,T,N,G} = _coordinates(E(), T(), Val{N}(), x.geom)
-# Base.CodeUnits is written as Arrow Binary, a Vector{UInt8} as List<UInt8>
-data(x::Wrapper{WellKnownBinary,T,G}) where {T,G} = codeunits(String(getwkb(x.geom).val))
+# Base.CodeUnits is written as Arrow Binary, a Vector{UInt8} as List<UInt8>.
+# StringView wraps the bytes without copying them.
+data(x::Wrapper{WellKnownBinary,T,G}) where {T,G} = Base.CodeUnits(StringView(getwkb(x.geom).val))
 data(x::Wrapper{WellKnownText,T,G}) where {T,G} = getwkt(x.geom).val
 
 _coordinates(::Interleaved, t::AbstractPointTrait, ::Val{N}, geom) where N = NTuple{N,Float64}(getcoord(t, geom))

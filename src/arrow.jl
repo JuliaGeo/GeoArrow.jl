@@ -60,7 +60,7 @@ ArrowTypes.ArrowKind(::Type{Wrapper{WellKnownBinary,T,N,G}}) where {T,N,G} = Arr
 
 ArrowTypes.ArrowType(::Type{Geometry{X,D,T,G}}) where {X,D,T,G} = G
 ArrowTypes.ArrowType(::Type{Wrapper{WellKnownText,T,N,G}}) where {T,N,G} = String
-ArrowTypes.ArrowType(::Type{Wrapper{WellKnownBinary,T,N,G}}) where {T,N,G} = Base.CodeUnits{UInt8,String}
+ArrowTypes.ArrowType(::Type{Wrapper{WellKnownBinary,T,N,G}}) where {T,N,G} = Base.CodeUnits{UInt8,StringView{Vector{UInt8}}}
 ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,PointTrait,N,G}}) where {N,G} = NTuple{N,Float64}
 ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,LineStringTrait,N,G}}) where {N,G} = Vector{NTuple{N,Float64}}
 ArrowTypes.ArrowType(::Type{Wrapper{Interleaved,MultiLineStringTrait,N,G}}) where {N,G} = Vector{Vector{NTuple{N,Float64}}}
@@ -101,7 +101,7 @@ ArrowTypes.toarrow(x::Wrapper) = data(x)
 ArrowTypes.toarrow(ex::Extents.Extent{(:X, :Y)}) = (; xmin=ex.X[1], ymin=ex.Y[1], xmax=ex.X[2], ymax=ex.Y[2])
 ArrowTypes.toarrow(ex::Extents.Extent{(:X, :Y, :Z)}) = (; xmin=ex.X[1], ymin=ex.Y[1], zmin=ex.Z[1], xmax=ex.X[2], ymax=ex.Y[2], zmax=ex.Z[2])
 ArrowTypes.toarrow(ex::Extents.Extent{(:X, :Y, :Z, :M)}) = (; xmin=ex.X[1], ymin=ex.Y[1], zmin=ex.Z[1], mmin=ex.M[1], xmax=ex.X[2], ymax=ex.Y[2], zmax=ex.Z[2], mmax=ex.M[2])
-ArrowTypes.toarrow(geom::GeoFormatTypes.WellKnownBinary{GeoFormatTypes.Geom}) = codeunits(String(copy(GeoFormatTypes.val(geom))))
+ArrowTypes.toarrow(geom::GeoFormatTypes.WellKnownBinary{GeoFormatTypes.Geom}) = Base.CodeUnits(StringView(GeoFormatTypes.val(geom)))
 ArrowTypes.toarrow(geom::GeoFormatTypes.WellKnownText{GeoFormatTypes.Geom}) = GeoFormatTypes.val(geom)
 
 ArrowTypes.fromarrow(::Type{GeoFormatTypes.WellKnownBinary}, x) = GeoFormatTypes.WellKnownBinary(GeoFormatTypes.Geom(), x)

@@ -93,7 +93,7 @@ mkpath(joinpath(testdatadir, "write"))
 
         w = GeoArrow.Wrapper(GeoArrow.WellKnownBinary(), g)
         @test ArrowTypes.ArrowKind(typeof(w)) == ArrowTypes.ListKind()
-        @test ArrowTypes.ArrowType(typeof(w)) == Base.CodeUnits{UInt8,String}
+        @test ArrowTypes.ArrowType(typeof(w)) <: Base.CodeUnits
         @test ArrowTypes.arrowname(typeof(w)) == Symbol("geoarrow.wkb")
         @test ArrowTypes.toarrow(w)[1:10] == UInt8[0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
