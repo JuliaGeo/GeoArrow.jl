@@ -47,38 +47,42 @@ mkpath(joinpath(testdatadir, "write"))
         end
     end
     @testset "Python" begin
-        Sys.iswindows() && return  # doesn't work on Windows
-
-        # ENV["JULIA_CONDAPKG_OFFLINE"] = true  # for running locally
-        ENV["JULIA_CONDAPKG_ENV"] = joinpath(@__DIR__, ".cpenv")
-        try
-            using PythonCall
-        catch e
-            @error "PythonCall not available:"
-            @error e
-            return
+        # A `return` here would skip all remaining testsets, so use a flag
+        python = !Sys.iswindows()  # doesn't work on Windows
+        if python
+            # ENV["JULIA_CONDAPKG_OFFLINE"] = true  # for running locally
+            ENV["JULIA_CONDAPKG_ENV"] = joinpath(@__DIR__, ".cpenv")
+            try
+                using PythonCall
+            catch e
+                @error "PythonCall not available:"
+                @error e
+                python = false
+            end
         end
-        feather = pyimport("pyarrow.feather")
+        if python
+            feather = pyimport("pyarrow.feather")
 
-        for arrowfn in filter(endswith("arrow"), readdir("data", join=true))
-            @testset "$arrowfn" begin
-                t = GeoArrow.read(arrowfn)
-                geom = t.geometry[1]
+            for arrowfn in filter(endswith("arrow"), readdir("data", join=true))
+                @testset "$arrowfn" begin
+                    t = GeoArrow.read(arrowfn)
+                    geom = t.geometry[1]
 
-                fn = joinpath("data/write", basename(arrowfn))
-                GeoArrow.write(fn, t)
+                    fn = joinpath("data/write", basename(arrowfn))
+                    GeoArrow.write(fn, t)
 
-                # Read with Python
-                # gdf = geopandas.read_feather(fn)
-                # print(gdf.geometry.type)
-                t = feather.read_table(fn)
-                meta = t.schema.field(-1).metadata
-                @test length(meta.keys()) == 2
-                @test any(occursin.("geoarrow", string.(meta.values())))
+                    # Read with Python
+                    # gdf = geopandas.read_feather(fn)
+                    # print(gdf.geometry.type)
+                    t = feather.read_table(fn)
+                    meta = t.schema.field(-1).metadata
+                    @test length(meta.keys()) == 2
+                    @test any(occursin.("geoarrow", string.(meta.values())))
 
-                # Read with Julia
-                tt = GeoArrow.read(fn)
-                tt.geometry[1] == geom
+                    # Read with Julia
+                    tt = GeoArrow.read(fn)
+                    tt.geometry[1] == geom
+                end
             end
         end
     end
@@ -155,5 +159,26 @@ mkpath(joinpath(testdatadir, "write"))
         dfn = GeoArrow.read(io)
         @test isnothing(GeoInterface.crs(dfn))
         @test GeoInterface.geometrycolumns(dfn) == (:geometry,)
+    end
+    @testset "CRS" begin
+        df = DataFrame(a=1:2, geometry=[(1.0, 2.0), (3.0, 4.0)])
+        io = IOBuffer()
+        GeoArrow.write(io, df; crs=GeoFormatTypes.EPSG(4326))
+        seekstart(io)
+        dfn = GeoArrow.read(io)
+        crs = GeoInterface.crs(dfn)
+        @test crs isa GeoFormatTypes.ProjJSON
+        @test occursin("4326", GeoFormatTypes.val(crs))
+        # Replacing a column (as GeoDataFrames does) keeps the GeoInterface metadata
+        dfn[!, :geometry] = copy(dfn.geometry)
+        @test GeoInterface.crs(dfn) == crs
+        @test GeoInterface.geometrycolumns(dfn) == (:geometry,)
+
+        # A table read with a CRS can be written again, keeping its CRS
+        t = GeoArrow.read(joinpath(testdatadir, "example-crs_vermont-4326_wkb.arrows"))
+        io = IOBuffer()
+        GeoArrow.write(io, t)
+        seekstart(io)
+        @test occursin("4326", GeoFormatTypes.val(GeoInterface.crs(GeoArrow.read(io))))
     end
 end

@@ -7,11 +7,11 @@ Any kwargs are passed to Arrow.write.
 function write(path, t; geocolumns=GeoInterface.geometrycolumns(t), crs=GeoInterface.crs(t), encoding::AbstractEncoding=Interleaved(), kwargs...)
 
     if isnothing(crs)
-        dcrs = Dict{String,String}()
+        dcrs = Dict{String,Any}()
     else
         pcrs = convert(Proj.CRS, crs)
         jcrs = convert(ProjJSON, pcrs)
-        dcrs = Dict("crs" => GeoFormatTypes.val(jcrs))
+        dcrs = Dict("crs" => JSON.parse(GeoFormatTypes.val(jcrs)))
     end
     ct = Tables.columntable(t)
     metadata = DataAPI.metadata(t)
@@ -32,9 +32,14 @@ function write(path, t; geocolumns=GeoInterface.geometrycolumns(t), crs=GeoInter
         T = nonmissingtype(Tables.columntype(t, column))
         if ArrowTypes.arrowname(T) == Symbol("")
             GeoInterface.isgeometry(T) || error("Geometry type $T in column $column must support the GeoInterface")
-            ct = merge(ct, NamedTuple{(column,)}((Wrapper.(Ref(encoding), data),)))
+            data = Wrapper.(Ref(encoding), data)
         end
-        geometa = Dict("ARROW:extension:metadata" => JSON3.write(dcrs))
+        # Arrow overwrites the extension metadata of an extension type with an empty string,
+        # so write the column as plain Arrow storage and set the extension keys ourselves.
+        name = ArrowTypes.arrowname(nonmissingtype(eltype(data)))
+        storage = map(x -> ismissing(x) ? missing : ArrowTypes.toarrow(x), data)
+        ct = merge(ct, NamedTuple{(column,)}((storage,)))
+        geometa = Dict("ARROW:extension:name" => String(name), "ARROW:extension:metadata" => JSON.json(dcrs))
         if haskey(colmetadata, column)
             merge!(colmetadata[column], geometa)
         else
@@ -69,10 +74,14 @@ function read(path; kwargs...)
         "ARROW:extension:metadata" in keys(metadata) || continue
         extmetadata = metadata["ARROW:extension:metadata"]
         isempty(extmetadata) && continue
-        crs = get(JSON3.read(extmetadata), :crs, nothing)
-        isnothing(crs) || DataAPI.metadata!(t, "GEOINTERFACE:crs", crs)
+        crs = get(JSON.parse(extmetadata), "crs", nothing)
+        isnothing(crs) || DataAPI.metadata!(t, "GEOINTERFACE:crs", _crs(crs); style=:note)
     end
-    isempty(names) || DataAPI.metadata!(t, "GEOINTERFACE:geometrycolumns", Tuple(names))
+    isempty(names) || DataAPI.metadata!(t, "GEOINTERFACE:geometrycolumns", Tuple(names); style=:note)
 
     return t
 end
+
+# The CRS is preferably a PROJJSON object, otherwise a string in any CRS format
+_crs(crs::AbstractDict) = GeoFormatTypes.ProjJSON(JSON.json(crs))
+_crs(crs) = crs
